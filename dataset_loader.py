@@ -3,8 +3,13 @@ from PIL import Image
 from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST, Flickr8k
 import torchvision.transforms as transforms
 
-def load_mnist(root='./data', train=True, num_samples=None, target_labels=None):
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, image_size=28):
+    transform = transforms.Compose([
+        transforms.Resize(image_size), 
+        transforms.CenterCrop(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
     dataset = MNIST(root=root, train=train, download=True, transform=transform)
     
     images = []
@@ -22,8 +27,13 @@ def load_mnist(root='./data', train=True, num_samples=None, target_labels=None):
 
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
-def load_mnist_fashion(root='./data', train=True, num_samples=None, target_labels=None):
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+def load_mnist_fashion(root='./data', train=True, num_samples=None, target_labels=None, image_size=28):
+    transform = transforms.Compose([
+        transforms.Resize(image_size), 
+        transforms.CenterCrop(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
     dataset = FashionMNIST(root=root, train=train, download=True, transform=transform)
     
     images = []
@@ -41,8 +51,13 @@ def load_mnist_fashion(root='./data', train=True, num_samples=None, target_label
 
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
-def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None):
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None, image_size=32):
+    transform = transforms.Compose([
+        transforms.Resize(image_size), 
+        transforms.CenterCrop(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    ])
     dataset = CIFAR10(root=root, train=train, download=True, transform=transform)
     
     images = []
@@ -69,7 +84,7 @@ def load_celeba(root='./data', split='train', num_samples=None, target_labels=No
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
-    
+
     dataset = LooseCelebA(root=root, split=split, download=False, transform=transform)
     
     images = []

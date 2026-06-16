@@ -4,86 +4,58 @@ from algorithms.algo3 import algo3_kwatra_modifie
 from algorithms.algo4 import algo4_nifty
 
 import numpy as np
-import os
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from time import time
-from PIL import Image
-import torchvision.transforms as transforms
 
-import dataset_loader
+from data_tensor_loader import load_data_to_tensor
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 ##### MAIN PARAMETERS
+""" 
+Availible datasets :
+celeba  (c)
+cifar   (ci)
+fashion (f)
+art     (a)
+cat     (ca)
+dog     (d)
+grumpy  (g)
+obama   (o)
+panda   (p)
+flickr  (fl)
+mnist   (m)
 """
-celeba
-cifar
-fashion
-art
-cat
-dog
-grumpy
-obama
-panda
-flickr
-mnist
-"""
+data_set_name = "c"
+subset_name = 30 # Used to specify a specific appendix needed for the file load/saving (ex if you use 50s for the sample number, if you don't check the force reload but there are no 50s file, it'll create one, and if there's one, it'll load it)
 
-
-used_data_set = 6
 force_reload_tensor = False
+
+dataset_loading_parameters = {
+    "num_samples" : 250,
+    "target_labels" : [],
+    "image_size" : 32,    
+}
+
+# Sub parameters (no specific need to change them by default)
+data_dir = "./data"
 
 patch_size = 9
 iteration = 20
 
 display_algo_2 = True
-
 image_on_line = 2
 
-
-
 torch.cuda.empty_cache()
-PYTORCH_CUDA_ALLOC_CONF = True
+data_tensor = load_data_to_tensor(None, data_dir=data_dir, data_set_name=data_set_name, subset_name=subset_name, dataset_loading_parameters=dataset_loading_parameters, force_reload_tensor=force_reload_tensor)
+data_tensor = data_tensor.to(device)
+
 
 def tensor_to_img(tensor):
     return np.clip((tensor[0].cpu().permute(1, 2, 0).numpy() + 1) / 2, 0, 1)
-
-# loading/saving of cahce
-cache_dir = "data"
-os.makedirs(cache_dir, exist_ok=True)
-
-status_file = os.path.join(cache_dir, "last_run_data.txt")
-tensor_file = os.path.join(cache_dir, f"tensor_cache_{used_data_set}.pt")
-
-load_from_cache = False
-if not force_reload_tensor and os.path.exists(status_file) and os.path.exists(status_file):
-    with open(status_file, 'r') as f:
-        last_set = f.read().strip()
-        if last_set == str(used_data_set) or os.path.exists(tensor_file):
-            load_from_cache = True
-
-if load_from_cache:
-    print(f"Loading tensor from : {tensor_file}")
-    data_tensor = torch.load(tensor_file, map_location=device)
-else:
-    print(f"Processing dataset {used_data_set} and creating tensor file")
-    match used_data_set:
-        case 0: data_tensor = dataset_loader.load_celeba(root="./data", num_samples=100, target_attr_indices=[], match_any=False, image_size=64)
-        case 1: data_tensor = dataset_loader.load_cifar10(root="./data", num_samples=500, target_labels=[3])
-        case 2: data_tensor = dataset_loader.load_mnist(root="./data", num_samples=1500, target_labels=[5,4,3])
-        case 3: data_tensor = dataset_loader.load_mnist_fashion(root="./data", num_samples=500, target_labels=[0,8,9])
-        case 4: data_tensor = dataset_loader.load_jpg_folder(folder_path="./data/flickr8k/Images",num_samples=100,image_size=32)
-        case 5 : data_tensor = dataset_loader.load_few_shot_panda(image_size=64)
-        case 6 : data_tensor = dataset_loader.load_parquet(file_path_or_url="data/few-shot-grumpy-cat/train-00000-of-00001.parquet",image_size=64)
-    # Save the tensor and update the file
-    torch.save(data_tensor, tensor_file)
-    with open(status_file, 'w') as f:
-        f.write(f"{used_data_set}")
-
-data_tensor = data_tensor.to(device)
 
 ## Generation
 number_of_images = image_on_line * 4
