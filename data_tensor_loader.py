@@ -55,7 +55,7 @@ def load_data_to_tensor(override_path:str, data_dir:str = "./data", dataset_load
     search_result = ()
     current_param_hash = save_dict_hash(dataset_loading_parameters)
     if not force_reload_tensor:
-        search_result = has_corresponding_tensor_hash(f"{data_dir}/cached_tensor_list.txt",current_param_hash)
+        search_result = has_corresponding_tensor_hash(f"{data_dir}/saved_tensors",current_param_hash)
         load_from_cache = search_result[0]
         
     if load_from_cache: # Load tensor from an already created cached tensor file
@@ -71,30 +71,17 @@ def load_data_to_tensor(override_path:str, data_dir:str = "./data", dataset_load
         
         print(f"{cache_dir}/{tensor_file_name}")
         torch.save(data_tensor, f"{cache_dir}/{tensor_file_name}")
-        add_cached_tensor_to_list(f"{data_dir}/cached_tensor_list.txt",tensor_file_name, current_param_hash)
     return data_tensor
     
-def has_corresponding_tensor_hash(tensor_list_path, target_hash) -> tuple:
+def has_corresponding_tensor_hash(tensor_dir_path, target_hash) -> tuple:
     # Try to retrieve a saved tensor path with the corresponding parameter hash
-    with open(tensor_list_path, 'r') as f:
-        lines = [line.strip() for line in f.read().splitlines()]
-        for line in lines : 
-            c = line.split(" ")
-            if c[1] == str(target_hash):
-                return (True, c[0])     
+    import os
+    for f in os.listdir(tensor_dir_path):
+        c = [ i.split(".") for i in f.split("_")][-1][0] #retrieve hash, last list, first item
+        if str(c) == str(target_hash):
+            return (True, f)
     return (False, None)
+
 def save_dict_hash(d):
     from hashlib import sha256
     return sha256(str(d.items()).encode()).hexdigest()
-
-def get_cached_tensors(file_path)-> dict:
-    tensors = {}
-    with open(file_path, "r") as f:
-        for l in f.read().splitlines() :
-            c = l.strip().split(" ")
-            tensors[str(c[0])] = str(c[1])
-    return tensors 
-
-def add_cached_tensor_to_list(save_file_path,cached_tensors_file_path,hash) : 
-    with open(save_file_path, "a") as f:
-        f.write(f"{cached_tensors_file_path} {hash}\n")

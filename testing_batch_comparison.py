@@ -31,11 +31,11 @@ mnist   (m)
 """
 
 
-force_reload_tensor = True
+force_reload_tensor = False
 
 dataset_loading_parameters = {
     "data_set_name" : "d",
-    "num_samples" : 250,
+    "num_samples" : 5,
     "target_labels" : [],
     "image_size" : 32,    
 }
