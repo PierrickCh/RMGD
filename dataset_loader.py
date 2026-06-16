@@ -3,7 +3,7 @@ from PIL import Image
 from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST, Flickr8k
 import torchvision.transforms as transforms
 
-def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, image_size=28):
+def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, image_size=28, **kwargs):
     transform = transforms.Compose([
         transforms.Resize(image_size), 
         transforms.CenterCrop(image_size),
@@ -16,7 +16,7 @@ def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, 
     for i in range(len(dataset)):
         img, label = dataset[i]
         
-        if target_labels is None:
+        if target_labels is None or len(target_labels) == 0:
             condition = True
         else:
             condition = label in target_labels
@@ -27,7 +27,7 @@ def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, 
 
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
-def load_mnist_fashion(root='./data', train=True, num_samples=None, target_labels=None, image_size=28):
+def load_mnist_fashion(root='./data', train=True, num_samples=None, target_labels=None, image_size=28, **kwargs):
     transform = transforms.Compose([
         transforms.Resize(image_size), 
         transforms.CenterCrop(image_size),
@@ -40,7 +40,7 @@ def load_mnist_fashion(root='./data', train=True, num_samples=None, target_label
     for i in range(len(dataset)):
         img, label = dataset[i]
         
-        if target_labels is None:
+        if target_labels is None or len(target_labels) == 0:
             condition = True
         else:
             condition = label in target_labels
@@ -51,7 +51,8 @@ def load_mnist_fashion(root='./data', train=True, num_samples=None, target_label
 
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
-def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None, image_size=32):
+def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None, image_size=32, **kwargs):
+    
     transform = transforms.Compose([
         transforms.Resize(image_size), 
         transforms.CenterCrop(image_size),
@@ -59,11 +60,10 @@ def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
     dataset = CIFAR10(root=root, train=train, download=True, transform=transform)
-    
     images = []
     for i in range(len(dataset)):
         img, label = dataset[i]
-        if target_labels is None:
+        if target_labels is None or len(target_labels) == 0:
             condition = True
         else:
             condition = label in target_labels
@@ -77,7 +77,7 @@ class LooseCelebA(CelebA): # Force check integrity to true because pytorch keeps
     def _check_integrity(self) -> bool:
         return True
 
-def load_celeba(root='./data', split='train', num_samples=None, target_labels=None, match_any=False, image_size=64):
+def load_celeba(root='./data', split='train', num_samples=None, target_labels=None, match_any=False, image_size=64, **kwargs):
     transform = transforms.Compose([
         transforms.Resize(image_size), 
         transforms.CenterCrop(image_size),
@@ -92,7 +92,7 @@ def load_celeba(root='./data', split='train', num_samples=None, target_labels=No
         img, attrs = dataset[i]
         
         # If no attributes are specified, get everything
-        if target_labels is None:
+        if target_labels is None or len(target_labels) == 0:
             condition = True
         else:
             # Search for the attributes
@@ -109,7 +109,7 @@ def load_celeba(root='./data', split='train', num_samples=None, target_labels=No
     return torch.stack(images)
 
 
-def load_jpg_folder(root='./data', num_samples=None, image_size=None):
+def load_jpg_folder(root='./data', num_samples=None, image_size=None, **kwargs):
     from PIL import Image
     import os
     """
@@ -156,7 +156,7 @@ def load_jpg_folder(root='./data', num_samples=None, image_size=None):
 
 from datasets import load_dataset
 
-def load_few_shot_obama(split='train', num_samples=None, image_size=None):
+def load_few_shot_obama(split='train', num_samples=None, image_size=None, **kwargs):
     hf_dataset = load_dataset("huggan/few-shot-obama", split=split)
     transform = transforms.Compose([
         transforms.Resize(image_size), 
@@ -185,7 +185,7 @@ def load_few_shot_obama(split='train', num_samples=None, image_size=None):
     return torch.stack(images).to('cpu')
 
 
-def load_few_shot_panda(split='train', num_samples=None, image_size=None):
+def load_few_shot_panda(split='train', num_samples=None, image_size=None, **kwargs):
     hf_dataset = load_dataset("huggan/few-shot-panda", split=split)
     transform = transforms.Compose([
         transforms.Resize(image_size), 
@@ -213,7 +213,7 @@ def load_few_shot_panda(split='train', num_samples=None, image_size=None):
 
     return torch.stack(images).to('cpu')
 
-def load_few_shot_dog(split='train', num_samples=None, image_size=None):
+def load_few_shot_dog(split='train', num_samples=None, image_size=None, **kwargs):
     hf_dataset = load_dataset("huggan/few-shot-dog", split=split)
     transform = transforms.Compose([
         transforms.Resize(image_size), 
@@ -245,7 +245,7 @@ def load_few_shot_dog(split='train', num_samples=None, image_size=None):
 import io
 import pandas as pd
 
-def load_parquet(root="./data", num_samples=None, image_size=None):
+def load_parquet(root="./data", num_samples=None, image_size=None, **kwargs):
     """
     - root : Can either be a filepath or a URL
     """
@@ -283,7 +283,7 @@ def load_parquet(root="./data", num_samples=None, image_size=None):
     return torch.stack(images).to('cpu')
 
 
-def load_parquet_full(root="./data", num_samples=None, image_size=None):
+def load_parquet_full(root="./data", num_samples=None, image_size=None, **kwargs):
     """
     - root : Can either be a filepath or a URL
     """

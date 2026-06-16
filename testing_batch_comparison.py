@@ -29,12 +29,12 @@ panda   (p)
 flickr  (fl)
 mnist   (m)
 """
-data_set_name = "c"
-subset_name = 30 # Used to specify a specific appendix needed for the file load/saving (ex if you use 50s for the sample number, if you don't check the force reload but there are no 50s file, it'll create one, and if there's one, it'll load it)
 
-force_reload_tensor = False
+
+force_reload_tensor = True
 
 dataset_loading_parameters = {
+    "data_set_name" : "d",
     "num_samples" : 250,
     "target_labels" : [],
     "image_size" : 32,    
@@ -50,7 +50,7 @@ display_algo_2 = True
 image_on_line = 2
 
 torch.cuda.empty_cache()
-data_tensor = load_data_to_tensor(None, data_dir=data_dir, data_set_name=data_set_name, subset_name=subset_name, dataset_loading_parameters=dataset_loading_parameters, force_reload_tensor=force_reload_tensor)
+data_tensor = load_data_to_tensor(None, data_dir=data_dir, dataset_loading_parameters=dataset_loading_parameters, force_reload_tensor=force_reload_tensor)
 data_tensor = data_tensor.to(device)
 
 
@@ -64,6 +64,7 @@ axes_flat = np.ndarray.flatten(axes)
 
 all_sequences = []
 seeds = []
+
 if data_tensor.shape[1] == 1 : plt.set_cmap("gray")
 # Algo
 for i in range(number_of_images)[:image_on_line]:

@@ -1,5 +1,4 @@
 
-import hashlib
 d:dict = {
     "num_samples" : 250,
     "target_labels" : [] ,
@@ -8,4 +7,7 @@ d:dict = {
       
 }
 
-print(hashlib.sha256(str(d.items()).encode()).digest())
+def a(num_samples=10, **kwargs):
+    return num_samples
+
+print(a(**d))

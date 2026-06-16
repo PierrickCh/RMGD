@@ -5,20 +5,22 @@ import dataset_loader
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 ##### MAIN PARAMETERS
-""" Availible datasets :
-celeba  (c)
-cifar   (ci)
-fashion (f)
-art     (a)
-cat     (ca)
-dog     (d)
-grumpy  (g)
-obama   (o)
-panda   (p)
-flickr  (fl)
-mnist   (m)
-"""
-def load_data_to_tensor(override_path:str, data_dir:str = "./data", data_set_name:str = "m", subset_name:str = None, dataset_loading_parameters:dict = None, force_reload_tensor=True) -> torch.Tensor:
+
+def load_data_to_tensor(override_path:str, data_dir:str = "./data", dataset_loading_parameters:dict = None, force_reload_tensor=True) -> torch.Tensor:
+    """ Availible datasets :
+    - celeba  (c)
+    - cifar   (ci)
+    - fashion (f)
+    - art     (a)
+    - cat     (ca)
+    - dog     (d)
+    - grumpy  (g)
+    - obama   (o)
+    - panda   (p)
+    - flickr  (fl)
+    - mnist   (m)
+    """
+    data_set_name = dataset_loading_parameters["data_set_name"]
     
     if override_path is not None and override_path != "" : 
         print(f"Loading tensor from : {override_path}")
@@ -43,63 +45,56 @@ def load_data_to_tensor(override_path:str, data_dir:str = "./data", data_set_nam
         case "flickr"   | "fl" : assigned_data_set = 9     ;   loading_func = dataset_loader.load_jpg_folder      ;    root_appendix = None
         case "mnist"    | "m"  : assigned_data_set = 10    ;   loading_func = dataset_loader.load_mnist           ;    root_appendix = None
 
-    full_name = f"{data_set_name}_{subset_name}_{assigned_data_set}"
-
+    dataset_loading_parameters["root"] = f"{data_dir}/{root_appendix}" if root_appendix else f"{data_dir}"
+    
     # loading/saving of cahce
     cache_dir = f"{data_dir}/saved_tensors"
     os.makedirs(cache_dir, exist_ok=True)
-
-    status_file = os.path.join(cache_dir, "last_run_data.txt")
-    tensor_file = os.path.join(cache_dir, f"tensor_cache_{full_name}.pt")
-
     
     load_from_cache = False
-    if not force_reload_tensor and os.path.exists(status_file):
-        load_from_cache = check_file_integrity("data/saved_tensors/last_run_data.txt",tensor_file,assigned_data_set,dataset_loading_parameters)
-
-    if load_from_cache: # Load tensor from an already created cached tensor file
-        print(f"Loading tensor from : {tensor_file}")
-        data_tensor = torch.load(tensor_file, map_location=device)
-    else: # Create a new cache tensor file
-        print(f"Processing dataset {data_set_name} and creating tensor file ({tensor_file})")
+    search_result = ()
+    current_param_hash = save_dict_hash(dataset_loading_parameters)
+    if not force_reload_tensor:
+        search_result = has_corresponding_tensor_hash(f"{data_dir}/cached_tensor_list.txt",current_param_hash)
+        load_from_cache = search_result[0]
         
-        dataset_loading_parameters["root"] = os.path.join(data_dir, root_appendix) if root_appendix is not None else data_dir
-
+    if load_from_cache: # Load tensor from an already created cached tensor file
+        print(f"Loading tensor from : {search_result[1]}")
+        data_tensor = torch.load(f"{cache_dir}/{search_result[1]}", map_location=device)
+    else: # Create a new cache tensor file
+        print(f"Processing dataset {data_set_name} ({assigned_data_set}) and creating tensor file (tensor_cache_{assigned_data_set}_{str(current_param_hash)}.pt)")
+        
         data_tensor = loading_func(**dataset_loading_parameters)
         # Save the tensor and update the file
-        torch.save(data_tensor, tensor_file)
-        with open(status_file, 'w') as f:
-            f.write(f"{assigned_data_set}\n")
-            for name, value in dataset_loading_parameters.items():
-                f.write(f"{name}:{value}\n")
-
+        
+        tensor_file_name = f"tensor_cache_{assigned_data_set}_{str(current_param_hash)}.pt"
+        
+        print(f"{cache_dir}/{tensor_file_name}")
+        torch.save(data_tensor, f"{cache_dir}/{tensor_file_name}")
+        add_cached_tensor_to_list(f"{data_dir}/cached_tensor_list.txt",tensor_file_name, current_param_hash)
     return data_tensor
-
-def check_file_integrity(last_run_path,tensor_file, current_data_set_id ,kwargs):
-    """File structure : 
-    dataset id (0-...)
-    other parameters taken as a dictionnary, order should not matter with the check below
-    """
-    is_file_valid = False
-    with open(last_run_path, 'r') as f:
-        lines = [line.strip() for line in f.read().splitlines()]
-        data_set_id = lines[0]
-        if str(current_data_set_id) == str(data_set_id) and os.path.exists(tensor_file):
-                is_file_valid = True
-        parameters_saved:list = [i[0] for i in list(kwargs.items())]
-        values_saved:list = [i[1] for i in list(kwargs.items())]
-        for i,content in enumerate(lines[1:]) :
-            parameter,value = content.split(":")
-            
-            if parameter in parameters_saved : 
-                idx = parameters_saved.index(parameter)
-                
-                if str(value) != str(values_saved[idx]).replace(" ","") : 
-                    
-                    return False
-        return is_file_valid
     
-
+def has_corresponding_tensor_hash(tensor_list_path, target_hash) -> tuple:
+    # Try to retrieve a saved tensor path with the corresponding parameter hash
+    with open(tensor_list_path, 'r') as f:
+        lines = [line.strip() for line in f.read().splitlines()]
+        for line in lines : 
+            c = line.split(" ")
+            if c[1] == str(target_hash):
+                return (True, c[0])     
+    return (False, None)
 def save_dict_hash(d):
     from hashlib import sha256
-    return sha256(str(d.items()).encode()).digest()
+    return sha256(str(d.items()).encode()).hexdigest()
+
+def get_cached_tensors(file_path)-> dict:
+    tensors = {}
+    with open(file_path, "r") as f:
+        for l in f.read().splitlines() :
+            c = l.strip().split(" ")
+            tensors[str(c[0])] = str(c[1])
+    return tensors 
+
+def add_cached_tensor_to_list(save_file_path,cached_tensors_file_path,hash) : 
+    with open(save_file_path, "a") as f:
+        f.write(f"{cached_tensors_file_path} {hash}\n")
