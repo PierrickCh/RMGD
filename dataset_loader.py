@@ -4,12 +4,19 @@ from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST, Flickr8k
 import torchvision.transforms as transforms
 
 def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, image_size=28, **kwargs):
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5), (0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5), (0.5))
+        ])
+    
     dataset = MNIST(root=root, train=train, download=True, transform=transform)
     
     images = []
@@ -28,12 +35,19 @@ def load_mnist(root='./data', train=True, num_samples=None, target_labels=None, 
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
 def load_mnist_fashion(root='./data', train=True, num_samples=None, target_labels=None, image_size=28, **kwargs):
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5), (0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5), (0.5))
+        ])
+        
     dataset = FashionMNIST(root=root, train=train, download=True, transform=transform)
     
     images = []
@@ -52,13 +66,18 @@ def load_mnist_fashion(root='./data', train=True, num_samples=None, target_label
     return torch.stack(images) if len(images) > 0 else torch.empty(0)
 
 def load_cifar10(root='./data', train=True, num_samples=None, target_labels=None, image_size=32, **kwargs):
-    
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
     dataset = CIFAR10(root=root, train=train, download=True, transform=transform)
     images = []
     for i in range(len(dataset)):
@@ -78,12 +97,18 @@ class LooseCelebA(CelebA): # Force check integrity to true because pytorch keeps
         return True
 
 def load_celeba(root='./data', split='train', num_samples=None, target_labels=None, match_any=False, image_size=64, **kwargs):
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
 
     dataset = LooseCelebA(root=root, split=split, download=False, transform=transform)
     
@@ -154,93 +179,6 @@ def load_jpg_folder(root='./data', num_samples=None, image_size=None, **kwargs):
     return batch_tensor.to('cpu')
 
 
-from datasets import load_dataset
-
-def load_few_shot_obama(split='train', num_samples=None, image_size=None, **kwargs):
-    hf_dataset = load_dataset("huggan/few-shot-obama", split=split)
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])   
-    
-    if num_samples is not None:
-        num_samples = min(num_samples, len(hf_dataset))
-        hf_dataset = hf_dataset.select(range(num_samples))
-        
-    images = []
-
-    for item in hf_dataset:
-        try:
-            img = item['image'].convert('RGB') 
-            img_tensor = transform(img)
-            images.append(img_tensor)
-        except Exception as e:
-            print(f"Skipping an image due to processing error: {e}")
-            
-    if not images:
-        raise ValueError("No images were successfully processed from the dataset!")
-
-    return torch.stack(images).to('cpu')
-
-
-def load_few_shot_panda(split='train', num_samples=None, image_size=None, **kwargs):
-    hf_dataset = load_dataset("huggan/few-shot-panda", split=split)
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])   
-    
-    if num_samples is not None:
-        num_samples = min(num_samples, len(hf_dataset))
-        hf_dataset = hf_dataset.select(range(num_samples))
-        
-    images = []
-
-    for item in hf_dataset:
-        try:
-            img = item['image'].convert('RGB') 
-            img_tensor = transform(img)
-            images.append(img_tensor)
-        except Exception as e:
-            print(f"Skipping an image due to processing error: {e}")
-            
-    if not images:
-        raise ValueError("No images were successfully processed from the dataset!")
-
-    return torch.stack(images).to('cpu')
-
-def load_few_shot_dog(split='train', num_samples=None, image_size=None, **kwargs):
-    hf_dataset = load_dataset("huggan/few-shot-dog", split=split)
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])   
-    
-    if num_samples is not None:
-        num_samples = min(num_samples, len(hf_dataset))
-        hf_dataset = hf_dataset.select(range(num_samples))
-        
-    images = []
-
-    for item in hf_dataset:
-        try:
-            img = item['image'].convert('RGB') 
-            img_tensor = transform(img)
-            images.append(img_tensor)
-        except Exception as e:
-            print(f"Skipping an image due to processing error: {e}")
-            
-    if not images:
-        raise ValueError("No images were successfully processed from the dataset!")
-
-    return torch.stack(images).to('cpu')
-
 
 import io
 import pandas as pd
@@ -254,12 +192,18 @@ def load_parquet(root="./data", num_samples=None, image_size=None, **kwargs):
     if num_samples is not None:
         df = df.head(num_samples)
     
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
     
     images = []
 
@@ -278,26 +222,36 @@ def load_parquet(root="./data", num_samples=None, image_size=None, **kwargs):
             print(f"Skipping a row due to processing error: {e}")
             
     if not images:
-        raise ValueError(f"No valid images could be parsed from {root}!")
+        raise ValueError(f"No image in {root}")
 
     return torch.stack(images).to('cpu')
 
 
-def load_parquet_full(root="./data", num_samples=None, image_size=None, **kwargs):
+def load_parquet_attr(root="./data", num_samples=None, image_size=None, **kwargs):
     """
     - root : Can either be a filepath or a URL
     """
     
     df = pd.read_parquet(root)
+    
+    if kwargs["target_labels"] != [] : 
+        df = df [ df["label"]  == any(kwargs["target_labels"]) ]
+
     if num_samples is not None:
         df = df.head(num_samples)
     
-    transform = transforms.Compose([
-        transforms.Resize(image_size), 
-        transforms.CenterCrop(image_size),
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-    ])
+    if image_size is not None : 
+        transform = transforms.Compose([
+            transforms.Resize(image_size), 
+            transforms.CenterCrop(image_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
+    else : 
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        ])
     
     images = []
 
@@ -316,6 +270,6 @@ def load_parquet_full(root="./data", num_samples=None, image_size=None, **kwargs
             print(f"Skipping a row due to processing error: {e}")
             
     if not images:
-        raise ValueError(f"No valid images could be parsed from {root}!")
+        raise ValueError(f"No image in {root}")
 
     return torch.stack(images).to('cpu')

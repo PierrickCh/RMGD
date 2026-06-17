@@ -17,33 +17,26 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 ##### MAIN PARAMETERS
 """ 
 Availible datasets :
-celeba  (c)
-cifar   (ci)
-fashion (f)
-art     (a)
-cat     (ca)
-dog     (d)
-grumpy  (g)
-obama   (o)
-panda   (p)
-flickr  (fl)
-mnist   (m)
+celeba  (c)         cifar   (ci)            cat     (ca)
+fashion (f)         mnist   (m)             afhq    (af)
+art     (a)         obama   (o)             flickr  (fl)
+dog     (d)         grumpy  (g)             panda   (p)
 """
 
 
 force_reload_tensor = False
 
 dataset_loading_parameters = {
-    "data_set_name" : "d",
-    "num_samples" : 5,
-    "target_labels" : [],
-    "image_size" : 32,    
+    "data_set_name" : "afhq",
+    "num_samples" : 500,
+    "target_labels" : [1],
+    "image_size" : 28,    
 }
 
 # Sub parameters (no specific need to change them by default)
 data_dir = "./data"
 
-patch_size = 9
+patch_size = 13
 iteration = 20
 
 display_algo_2 = True
@@ -55,7 +48,12 @@ data_tensor = data_tensor.to(device)
 
 
 def tensor_to_img(tensor):
-    return np.clip((tensor[0].cpu().permute(1, 2, 0).numpy() + 1) / 2, 0, 1)
+    img = np.clip((tensor[0].cpu().permute(1, 2, 0).numpy() + 1) / 2, 0, 1)
+    # If the last dimension is 1, drop it
+    if img.shape[-1] == 1:
+        img = img.squeeze(-1) 
+        
+    return img
 
 ## Generation
 number_of_images = image_on_line * 4
@@ -67,6 +65,7 @@ seeds = []
 
 if data_tensor.shape[1] == 1 : plt.set_cmap("gray")
 # Algo
+from torchvision.utils import save_image
 for i in range(number_of_images)[:image_on_line]:
     s = time()
     seeds.append(i+torch.randint(0,99999999,(1,1)))
@@ -74,7 +73,9 @@ for i in range(number_of_images)[:image_on_line]:
     print(f"Execution time: {time() - s:.5f}s")
     last_tensor = r1[-1]
     all_sequences.append(r1)
-    
+
+    plt.imsave(f"ref_img{i}.png",tensor_to_img(last_tensor))
+
     axes_flat[i].imshow(tensor_to_img(last_tensor))
 
 for i in range(number_of_images)[image_on_line:image_on_line*2]:
@@ -89,9 +90,10 @@ for i in range(number_of_images)[image_on_line:image_on_line*2]:
             
         last_tensor = r1[-1]
         axes_flat[i].imshow(tensor_to_img(last_tensor))
-    
-    all_sequences.append([torch.ones_like(all_sequences[-1][0]) for i in range(image_on_line)])
-    
+        plt.imsave(f"ref_img{i}.png",tensor_to_img(last_tensor))
+        all_sequences.append(r1)
+    else : 
+        all_sequences.append([torch.ones_like(all_sequences[-1][0]) for i in range(image_on_line)])
     
 
     
@@ -105,20 +107,20 @@ for i in range(number_of_images)[image_on_line*2:image_on_line*3]:
     
     last_tensor = r1[-1]
     all_sequences.append(r1)
-    
+    plt.imsave(f"ref_img{i}.png",tensor_to_img(last_tensor))
     axes_flat[i].imshow(tensor_to_img(last_tensor))
     
-    
+
 for i in range(number_of_images)[image_on_line*3:image_on_line*4]:
     s = time()
     seed = seeds[i%image_on_line]
     r1 = algo4_nifty(data_tensor, patchsize=patch_size, N=iteration, device=device,seed=seed)
     
     print(f"Execution time: {time() - s:.5f}s")
-    
+    plt.imsave(f"ref_img{i}.png",tensor_to_img(last_tensor))
     last_tensor = r1[-1]
     all_sequences.append(r1)
-    
+    print(len(r1))
     axes_flat[i].imshow(tensor_to_img(last_tensor))
     
     
@@ -127,7 +129,6 @@ for i in range(number_of_images)[image_on_line*3:image_on_line*4]:
 
 ims = []
 num_steps = min(len(seq) for seq in all_sequences) # because sometimes algo 2 and 3 stops sooner (loop break if there's no change, line 7)
-
 for step in range(num_steps):
     frame_artists = []
     for i in range(number_of_images):
@@ -137,5 +138,5 @@ for step in range(num_steps):
     
     ims.append(frame_artists)
 
-ani = animation.ArtistAnimation(fig, ims, interval=100, blit=True, repeat_delay=5000)
+ani = animation.ArtistAnimation(fig, ims, interval=500, blit=True, repeat_delay=2000)
 plt.show()

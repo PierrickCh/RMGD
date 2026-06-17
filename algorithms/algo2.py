@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
-
+from torchvision.utils import save_image
 def extract_centered_patches(img, patchsize):
     """
     Extrait les patches centrés pour chaque pixel de l'image.
@@ -51,7 +51,8 @@ def algo2_kwatra_original(D_train, patchsize=3, N=100, device='cpu',seed=None):
         x_n_plus_1 = fold(z_n_patches) / count # Moyennage des patches se chevauchants 
         
         saved_steps.append(x_n_plus_1.clone().cpu())
-
+        #save_image(saved_steps[-1], f"t_{n}.jpg")
+        
         # 5 
         x_patches = extract_centered_patches(x_n_plus_1, patchsize) # Extraction des patchs de la nouvelle image x_n+1 pour trouver les plus proches dans Z (1, C*p^2, H*W)
         x_flat = x_patches.squeeze(0).transpose(0, 1) # (H*W, C*p^2)

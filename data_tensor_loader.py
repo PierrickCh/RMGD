@@ -44,6 +44,7 @@ def load_data_to_tensor(override_path:str, data_dir:str = "./data", dataset_load
         case "panda"    | "p"  : assigned_data_set = 8     ;   loading_func = dataset_loader.load_parquet         ;    root_appendix = "few-shot-panda"
         case "flickr"   | "fl" : assigned_data_set = 9     ;   loading_func = dataset_loader.load_jpg_folder      ;    root_appendix = None
         case "mnist"    | "m"  : assigned_data_set = 10    ;   loading_func = dataset_loader.load_mnist           ;    root_appendix = None
+        case "afhq"     | "af" : assigned_data_set = 11    ;   loading_func = dataset_loader.load_parquet_attr    ;    root_appendix = "afhq"
 
     dataset_loading_parameters["root"] = f"{data_dir}/{root_appendix}" if root_appendix else f"{data_dir}"
     
