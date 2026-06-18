@@ -37,7 +37,7 @@ iteration = 10
 # Sub parameters (no specific need to change them by default)
 data_dir = "./data"
 image_on_line = 2
-
+mask_type = "gaussian"
 manual_seed = None
 
 
@@ -62,7 +62,8 @@ algos = [
     algo4_nifty,
     algo5
 ]
-algos[4].mask_weight_type = "gaussian"
+
+
 
 
 lines = len(algos)
@@ -83,7 +84,8 @@ for i in range(number_of_images):
     col = (i % image_on_line)
     
     s = perf_counter()
-    results = algos[row](data_tensor, patchsize=patch_size, N=iteration, device=device,seed=seeds[col])
+    if row != 4 : results = algos[row](data_tensor, patchsize=patch_size, N=iteration, device=device,seed=seeds[col])
+    else : results = algos[row](data_tensor, patchsize=patch_size, N=iteration, device=device,mask_weight_type =mask_type,seed=seeds[col])
     last_result = results[-1]
     print(f"Execution time: {perf_counter() - s:.5f}s")
     all_sequences.append(results)

@@ -248,7 +248,7 @@ def Nifty(img,im2=None,rs=1.,T=100,k=10,patchsize=16,stride=1,size=(256,256),oct
             #optional warmup to accumulate good matches in memory before starting synthesis
             P_synth = Patch_extraction(synth, patchsize, stride)
 
-            for _ in range(warmup):
+            for _ in range(warmup): # Faire un warmup à l'initialilsation à la place (pour l'accelerer)
                 P_topk, D ,mem = Patch_topk(P_exmpl*t0, P_synth, N_subsampling,k=k,mem=mem)
 
         for it in range(T): # ODE steps

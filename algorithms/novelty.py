@@ -87,6 +87,9 @@ def compare_ref_stack(ref_t: torch.Tensor, comp_t: torch.Tensor, threshold: floa
     final_indices = torch.where(fallback_mask, best_indices_raw, best_indices_smooth)
     final_mask = mask_smooth | mask_raw # Valid if either passes, smooth or raw
     
+    ####################################
+    # Color map of regions
+    ######################################
     
     # Map final indices to colors
     final = torch.ones_like(ref_t) # White canvas
@@ -114,15 +117,26 @@ def compare_ref_stack(ref_t: torch.Tensor, comp_t: torch.Tensor, threshold: floa
     # Apply the final combined mask
     final = torch.where(final_mask.unsqueeze(0), color, final)
     
-    return final
+    #############################
+    # Image reference map/mosaic of regions
+    # Display the correspoding pixel of the reference image in the reference tensor where it is supposedly taken from based on the mask view
+    ###########################################
+    
+    mosaic_final = torch.ones_like(ref_t) # White canvas
+    for i in unique_indices:
+        mosaic_final = torch.where(final_indices == i, comp_t[i], mosaic_final)
+    
+    
+    
+    return final, mosaic_final
 
 
 
 if __name__ == "__main__":
-    data_tensor = torch.load("data/saved_tensors/tensor_cache_11_71032d09e67544c41e517d8533b8c0e9babbe99861d733c92020b3387d4f2574.pt", map_location='cuda:0')
+    data_tensor = torch.load("data/saved_tensors/tensor_cache_0_753d59e7eabbd4e889a6cb0f4c4c414b164c3f063897b7732606ec6e138a0f0a.pt", map_location='cuda:0')
 
     fig, ax = plt.subplots(2, 1, figsize=(3, 3))
-    ref_tensor = img_to_tensor("ref_img5.png").to('cuda:0')
+    ref_tensor = img_to_tensor("novelty_test.jpg").to('cuda:0')
     ax[0].imshow(tensor_to_numpy_img(compare_ref_stack(ref_tensor,data_tensor,smooth_kernel=1,threshold=0.1)))
 
     ax[1].imshow(tensor_to_numpy_img((ref_tensor +1)/2))

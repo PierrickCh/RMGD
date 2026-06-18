@@ -143,7 +143,7 @@ def load_jpg_folder(root='./data', num_samples=None, image_size=None, **kwargs):
     Returns a tensor of shape (N, C, H, W) normalized to [-1, 1].
     """
     # Extract all jpg files and sort them alphabetically
-    all_files = sorted([f for f in os.listdir(folder_path) if f.lower().endswith(('.jpg', '.jpeg'))])
+    all_files = sorted([f for f in os.listdir(root) if f.lower().endswith(('.jpg', '.jpeg'))])
     
     # Slice the list to get only the first X files
     if num_samples is not None:
@@ -161,7 +161,7 @@ def load_jpg_folder(root='./data', num_samples=None, image_size=None, **kwargs):
 
     # Load, transform, and collect
     for f_name in all_files:
-        file_path = os.path.join(folder_path, f_name)
+        file_path = os.path.join(root, f_name)
         try:
             img = Image.open(file_path).convert('RGB') # Make RGB
             img_tensor = transform(img) # Realize the list of transformations (resize maybe + to tensor)
@@ -170,7 +170,7 @@ def load_jpg_folder(root='./data', num_samples=None, image_size=None, **kwargs):
             print(f"Skipping {f_name} due to error: {e}")
             
     if not images:
-        raise ValueError(f"No JPG images found in {folder_path}!")
+        raise ValueError(f"No JPG images found in {root}")
 
     # Stack into a batch and scale from [0, 1] to [-1, 1]
     batch_tensor = torch.stack(images)
@@ -185,7 +185,7 @@ import pandas as pd
 
 def load_parquet(root="./data", num_samples=None, image_size=None, **kwargs):
     """
-    - root : Can either be a filepath or a URL
+    - root : Can either be a filepath or a URL (based on doc but most of the time there're too much requests so it fails)
     """
     
     df = pd.read_parquet(root)
@@ -229,7 +229,7 @@ def load_parquet(root="./data", num_samples=None, image_size=None, **kwargs):
 
 def load_parquet_attr(root="./data", num_samples=None, image_size=None, **kwargs):
     """
-    - root : Can either be a filepath or a URL
+    - root : Can either be a filepath or a URL (based on doc but most of the time there're too much requests so it fails)
     """
     
     df = pd.read_parquet(root)
