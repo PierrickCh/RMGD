@@ -42,9 +42,10 @@ def get_noise_schedule(T, schedule, device):
     return alpha, alpha_bar, beta
 
 @torch.no_grad()
-def algo1_diffusion_inverse(D_train, patchsize=3, T=1000, device='cpu', schedule='cosine',seed=None):
+def algo1_diffusion_inverse(D_train, patchsize=3, N=1000, device='cpu', schedule='cosine',seed=None):
     """
     Algorithme 1 : Diffusion inverse avec score localement contraint.
+    N = T (dans le papier) = nombre d'itérations
     """
     if seed is not None:
         torch.manual_seed(seed)
@@ -53,7 +54,7 @@ def algo1_diffusion_inverse(D_train, patchsize=3, T=1000, device='cpu', schedule
     D_train = D_train.to(device)
     N_imgs, C, H, W = D_train.shape
     # Définition du Noise Schedule
-    alpha, alpha_bar, beta = get_noise_schedule(T, schedule, device)
+    alpha, alpha_bar, beta = get_noise_schedule(N, schedule, device)
     
     Z = extract_centered_patches(D_train, patchsize) 
     center_p = (patchsize**2) // 2
@@ -66,7 +67,7 @@ def algo1_diffusion_inverse(D_train, patchsize=3, T=1000, device='cpu', schedule
     saved_steps = []
     saved_steps.append(y_t.cpu()) # Sauvegarde des images sur le CPU (pour essayer de garder de la VRAM au  plus possible)
     
-    for t_step in tqdm(range(T - 1, -1, -1)):
+    for t_step in tqdm(range(N - 1, -1, -1)):
         # Pas de boucle pour 3 car calcul vectoriel
         
         a_t = alpha[t_step]

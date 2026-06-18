@@ -47,19 +47,20 @@ def algo2_kwatra_original(D_train, patchsize=3, N=100, device='cpu',seed=None):
         # 4 
         
         z_n_patches=torch.gather(Z,0,z_n_indices.expand(-1,-1,C*patchsize**2)).permute(0,2,1) # (1, C*p^2, H*W)
-
         x_n_plus_1 = fold(z_n_patches) / count # Moyennage des patches se chevauchants 
         
         saved_steps.append(x_n_plus_1.clone().cpu())
-        #save_image(saved_steps[-1], f"t_{n}.jpg")
         
         # 5 
         x_patches = extract_centered_patches(x_n_plus_1, patchsize) # Extraction des patchs de la nouvelle image x_n+1 pour trouver les plus proches dans Z (1, C*p^2, H*W)
         x_flat = x_patches.squeeze(0).transpose(0, 1) # (H*W, C*p^2)
-        
+
         # Calcul des distances entre les patches de x et Z
-        dists = torch.cdist(x_flat.unsqueeze(0).permute(1,0,2), Z.permute(1,0,2), p=2.0) # Forme: ( H*W, 1,N_imgs)
-        
+        # LENT !!! 
+        #dists_lent = torch.cdist(x_flat.unsqueeze(0).permute(1,0,2), Z.permute(1,0,2), p=2.0, compute_mode="donot_use_mm_for_euclid_dist") # Forme: ( H*W, 1,N_imgs)
+        dists = torch.sum((x_flat.unsqueeze(0) - Z)**2, dim=2).transpose(0,1).unsqueeze(1).sqrt()
+        #assert torch.allclose(dists,dists2), "no close dist"
+
         z_n_plus_1_indices = torch.argmin(dists, dim=-1, keepdim=True).transpose(0, 1) # (1, H*W, 1)
 
         # 7 Si y'a plus de changement, stop
@@ -69,3 +70,16 @@ def algo2_kwatra_original(D_train, patchsize=3, N=100, device='cpu',seed=None):
         z_n_indices = z_n_plus_1_indices
 
     return saved_steps
+
+
+
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    torch.cuda.empty_cache()
+    device = "cpu" if False else "cuda:0"
+    tensor_file = "tensor_cache_0_572166ee296ae455cacdb7ef250939556d839bdc8fa38264d3cde1937b4a4196.pt"
+    tensor_path = f"./data/saved_tensors/{tensor_file}"
+    data_tensor = torch.load(tensor_path, map_location=device)
+    a5 = algo2_kwatra_original(data_tensor, patchsize=5, N=100, device=device, seed=1)
+
+    

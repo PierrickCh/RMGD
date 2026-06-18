@@ -1,17 +1,15 @@
-# A slightly more optimized version of method.py, with a gain in compute time of 3.2%
-
-import os
+import os, time
+from tqdm import tqdm
 import math
 import numpy as np
 import torch
 import torch.nn.functional as F
+import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import ot
 from PIL import Image
 from torch import nn
 
-# Specify to use all CPU cores for multithreading with pytorch
-from multiprocessing import cpu_count
-torch.set_num_threads(cpu_count())
 
 def manually_select_device(try_gpu=True):
     if torch.cuda.is_available() and try_gpu:
@@ -20,7 +18,7 @@ def manually_select_device(try_gpu=True):
     else:
         return torch.device('cpu')
 
-device = manually_select_device(True)
+device = manually_select_device()
 
 
 
@@ -31,12 +29,66 @@ def Tensor_load(file_name):
     return img * 2 - 1  # Scale to [-1, 1]
 
 
-@torch.no_grad() 
+def Tensor_display(img1, img2=None, title=None, pad_value=1.0):
+    def to_np(img):
+        if img.dim() == 4:
+            img = img.squeeze(0)
+        img = (img.clamp(-1, 1) + 1) / 2  # [-1,1] -> [0,1]
+        return img.permute(1, 2, 0).cpu().numpy()
+
+    def center_pad(img, target_h, target_w, pad_val):
+        _, _, h, w = img.shape
+        pad_h = target_h - h
+        pad_w = target_w - w
+        pad_top = pad_h // 2
+        pad_bottom = pad_h - pad_top
+        pad_left = pad_w // 2
+        pad_right = pad_w - pad_left
+        # pad format: (left, right, top, bottom)
+        padding = (pad_left, pad_right, pad_top, pad_bottom)
+        return F.pad(img, padding, mode='constant', value=pad_val)
+
+    images = [img1]
+    if img2 is not None:
+        images.append(img2)
+
+    # Find max height and width
+    heights = [img.shape[-2] for img in images]
+    widths = [img.shape[-1] for img in images]
+    max_h, max_w = max(heights), max(widths)
+
+    # Center pad images to max size
+    images = [center_pad(img, max_h, max_w, pad_value) for img in images]
+
+    n = len(images)
+    fig, axs = plt.subplots(1, n, figsize=(6 * n, 6))
+    if n == 1:
+        axs = [axs]
+
+    for ax, img in zip(axs, images):
+        np_img = to_np(img)
+        ax.imshow(np_img, interpolation='none')
+        ax.axis('off')
+        ax.set_xlim([0, max_w])
+        ax.set_ylim([max_h, 0])
+
+    if title:
+        fig.suptitle(title)
+    plt.tight_layout()
+    plt.show()
+
+
+
+def imsave(s,x):    
+    out = (x.squeeze(0).permute(1, 2, 0).cpu().numpy()*.5+.5).clip(0, 1)
+    plt.imsave(s, out)
+
+
+
 def Patch_extraction(img, patchsize, stride) :
     P = torch.nn.Unfold(kernel_size=patchsize, dilation=1, padding=0, stride=stride)(img) # Tensor with dimension 1 x 3*Patchsize^2 x Heigh*Width/stride^2
     return P.to(torch.float32)
 
-@torch.no_grad() 
 def Patch_Average(P_synth, patchsize, stride, W, H, D, spotsize=1/4) : 
     # Gaussian weight for patch center
 
@@ -47,9 +99,7 @@ def Patch_Average(P_synth, patchsize, stride, W, H, D, spotsize=1/4) :
     w=w.unsqueeze(0).unsqueeze(-1)
 
     synth = nn.Fold((W,H), patchsize, dilation=1, padding=0, stride=stride)(P_synth*w)
-    
-    w_expanded = w.expand_as(P_synth) # to not create another tensor instead of P_synth*0+w
-    count = nn.Fold((W,H), patchsize, dilation=1, padding=0, stride=stride)(w_expanded) # normalization to sum to 1
+    count = nn.Fold((W,H), patchsize, dilation=1, padding=0, stride=stride)(P_synth*0+w) # normalization to sum to 1
 
 
     count= (count*(count!=0)+1.*(count==0))
@@ -77,7 +127,7 @@ def make_times(n_timestep , schedule='linear', t0=0,linear_start=1e-4, linear_en
         times = times / times[-1]
     return times
 
-@torch.no_grad()
+
 def Patch_topk(P_exmpl, P_synth, N_subsampling, k=10,mem=None) :
     N = P_exmpl.size(2)
     
@@ -87,9 +137,13 @@ def Patch_topk(P_exmpl, P_synth, N_subsampling, k=10,mem=None) :
     I = I[0:Ns]
     
     # Distance matrix between synthesis patches, and sampled exemplar partches
-    X = P_exmpl[:,:,I] .squeeze(0) # d x Ns
+    X = P_exmpl[:,:,I] 
+    X = X.squeeze(0) # d x Ns
+    X2 = (X**2).sum(0).unsqueeze(0) # 1 x Ns
     Y = P_synth.squeeze(0) # d x N
-    D = torch.cdist(Y.T.contiguous(),X.T.contiguous(),2) #N Ns, using pytorch's cdist function (more optimized)
+    Y2 = (Y**2).sum(0).unsqueeze(0) # squared norm : 1 x N
+    D = Y2.transpose(1,0) - 2 * torch.matmul(Y.transpose(1,0),X) + X2 #N Ns
+    
 
 
     J,ind = torch.topk(-D,k=k,dim=1)
@@ -107,8 +161,9 @@ def Patch_topk(P_exmpl, P_synth, N_subsampling, k=10,mem=None) :
         X_mem=P_exmpl[:,:,mem]
         X=X_mem[0].permute(2,0,1)
         Y=P_synth
-        # Removed X2 & Y2 to avoid storing calculations of large arrayes, calculation made directly in D_mem
-        D_mem = (X - Y).pow(2).sum(1).T
+        X2 = (X**2).sum(1)
+        Y2 = (Y**2).sum(1)
+        D_mem=(Y2+X2-2*(X*Y).sum(1)).T
 
         Dcat=torch.cat((D_mem,-J),dim=1) # distances to previous topk + new candidates
         indcat=torch.cat((mem,torch.take(I,ind)),dim=1)
@@ -140,8 +195,8 @@ def Patch_topk(P_exmpl, P_synth, N_subsampling, k=10,mem=None) :
         
     return top, dists, mem
 
-@torch.no_grad()
-def Nifty_opt(img,rs=1.,T=100,k=10,patchsize=16,stride=1,size=(256,256),octaves=1,renoise=.5,warmup=0,memory=True,seed=None,noise=None,spotsize=1/4):
+
+def Nifty(img,im2=None,rs=1.,T=100,k=10,patchsize=16,stride=1,size=(256,256),octaves=1,renoise=.5,warmup=0,show=True,memory=True,seed=None,noise=None,spotsize=1/4,blend=False,blend_alpha=0.5,save=True,blend_map=None):
     if seed is not None:
         torch.manual_seed(seed)
 
@@ -158,10 +213,11 @@ def Nifty_opt(img,rs=1.,T=100,k=10,patchsize=16,stride=1,size=(256,256),octaves=
         mem2=None
         if s==(octaves-1):
             img_resized=img
+            if im2 is not None:
+                im2_resized=im2
         else:
             img_resized=F.interpolate(img,size=(int(img.shape[-2]*2**-(octaves-1-s)),int(img.shape[-1]*2**-(octaves-1-s))),mode='bicubic')
 
-        
         P_exmpl = Patch_extraction(img_resized,patchsize=patchsize,stride=stride) #
 
         N_subsampling=int(rs*P_exmpl.shape[-1])
@@ -210,7 +266,18 @@ def Nifty_opt(img,rs=1.,T=100,k=10,patchsize=16,stride=1,size=(256,256),octaves=
             weight=nn.Softmax(dim=1)(-D/2/(1-t)**2) # flow weights
             P_flow=((P_topk-P_synth.unsqueeze(-1))*weight.unsqueeze(0).unsqueeze(0)).sum(-1)/(1-t) # \hat{\omega}} in the paper
 
+
             P_synth += P_flow*(times[it+1]-t) # ODE steps and aggregation of flows
             synth = Patch_Average(P_synth, patchsize, stride,  synth.shape[-2], synth.shape[-1], D[:,0],spotsize=spotsize) 
+        
+        if save:
+            imsave('./results/gt_s%d.png'%s,img_resized*sigma+mu)
+            imsave('./results/synth_s%d.png'%s,synth*sigma+mu)
+    if show: 
+        Tensor_display(img_resized*sigma+mu,synth*sigma+mu)
+        
+
 
     return synth*sigma+mu # denormalize to zero mean
+
+

@@ -32,7 +32,7 @@ def algo4_nifty(D_train, patchsize=3, N=50, device='cpu', seed=None):
     c_indices = [c * (patchsize**2) + center_p for c in range(C)]
     Z_center = Z[:, c_indices, :] # (N_imgs, C, H*W)
     
-    # 1 Initialisation avec un bruit gaussien pur
+    # 1 Initialisation avec un bruit gaussien (seule différence avec le 3)
     x_noise = torch.randn(1, C, H, W, device=device)
     
     # On extrait les patches du bruit pour initialiser z_0 avec les patchs d'entraînement les plus proches

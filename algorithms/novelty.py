@@ -87,20 +87,29 @@ def compare_ref_stack(ref_t: torch.Tensor, comp_t: torch.Tensor, threshold: floa
     final_indices = torch.where(fallback_mask, best_indices_raw, best_indices_smooth)
     final_mask = mask_smooth | mask_raw # Valid if either passes, smooth or raw
     
+    
     # Map final indices to colors
     final = torch.ones_like(ref_t) # White canvas
     
+    ### Color range calibration (ot get higher contrast of colors with only a separation of the spectrum based  on the number of patches)
+
     mask_pathces_nb = final_indices.unique().shape[0]# retrieve the number of mask patches
-    print(mask_pathces_nb)
+    #print(mask_pathces_nb)
     
-    
-    clr_rg = torch.tensor(get_color_range(N), dtype=torch.float32, device=device)
+    clr_rg = torch.tensor(get_color_range(mask_pathces_nb), dtype=torch.float32, device=device)
 
-    colors = clr_rg[final_indices.flatten()] 
-    color = colors.view(H, W, 3).permute(2, 0, 1) 
+    # Create a mapping from original indices to color indices (0 to patch number)
+    unique_indices = final_indices.unique()
+    index_mapping = torch.full((N,1), -1, dtype=torch.long, device=device)
+    for new_idx, orig_idx in enumerate(unique_indices):
+        index_mapping[orig_idx] = new_idx
 
-        
-    
+    # Remap final_indices using the mapping
+    remapped_indices = index_mapping[final_indices.flatten()]
+
+    # Retrieve he color
+    colors = clr_rg[remapped_indices]
+    color = colors.view(H, W, 3).permute(2, 0, 1)
     
     # Apply the final combined mask
     final = torch.where(final_mask.unsqueeze(0), color, final)
